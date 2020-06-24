@@ -8,7 +8,7 @@ import json
 import random
 from rpi_ws281x import *
 
-#pm2 start ws2812.py --name ws2812 --interpreter python3
+#sudo pm2 start ws2812.py --name ws2812 --interpreter python3
 
 mqttClient = None
 strip = None
@@ -60,7 +60,6 @@ def update_leds():
         print("driving leds")
         print (led_status)
         for key, value in enumerate(led_status):
-            print("driving led")
             strip.setPixelColor(key, int(value, 16))
         strip.show()
         mqttClient.publish("pibot/leds/state", json.dumps(led_status))
