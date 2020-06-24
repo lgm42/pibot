@@ -10,7 +10,7 @@ from ina219 import INA219
 from ina219 import DeviceRangeError
 
 #sudo pm2 start ina219_reader.py --name ina219_reader --interpreter python3
-
+MQTT_PUBLISH_PERIOD = 5
 SHUNT_OHMS = 0.1
 low_pass_filter = 0.8
 
@@ -52,6 +52,8 @@ def main():
     inaA = ina.current()/1000
     inaW = inaV*inaA
 
+    last_charging_state = False
+    overflow = MQTT_PUBLISH_PERIOD
     while True:
         
         inaV = inaV * low_pass_filter + ina.voltage() * (1 - low_pass_filter)
@@ -70,8 +72,13 @@ def main():
             power['charging'] = False
             power['battery_level'] = float("{0:.2f}".format(max(min(170.91 * inaV - 567.75, 100.0), 0.0)))
 
-        mqttClient.publish("pibot/power/state", json.dumps(power))
-        time.sleep(1)
+        #we publish immediately if we have plugged a cable or only every XX seconds
+        if (last_charging_state != power['charging']) or (overflow <= 0):
+            mqttClient.publish("pibot/power/state", json.dumps(power))
+            overflow = MQTT_PUBLISH_PERIOD
+        last_charging_state = power['charging']
+        overflow -= 0.1
+        time.sleep(0.1)
 
 def exit_gracefully(signum, frame):
     # restore the original signal handler as otherwise evil things will happen
